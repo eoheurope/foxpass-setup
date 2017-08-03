@@ -119,7 +119,7 @@ def run_authconfig(uri, base_dn):
 def check_oddjob():
     print('Checking for pam_oddjob_mkhomedir')
     pam_file = '/etc/pam.d/password-auth-ac'
-    for line in fileinput.input(pam_file,inplace=True):
+    for line in fileinput.input(pam_file, inplace=True):
         if not 'pam_oddjob_mkhomedir' in line:
             print(line,end='')
         else:
