@@ -24,8 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import argparse
 from datetime import datetime
+import fileinput
 import os
 import sys
 import time
@@ -50,6 +52,7 @@ def main():
     install_dependencies()
     write_foxpass_ssh_keys_script(apis, args.api_key)
     run_authconfig(args.ldap_uri, args.base_dn)
+    check_oddjob()
     configure_sssd(bind_dn, args.bind_pw, args.ldaps)
     augment_sshd_config()
     fix_sudo()
@@ -110,8 +113,16 @@ exit $?
 
 def run_authconfig(uri, base_dn):
     cmd = 'authconfig --enablesssd --enablesssdauth --enablelocauthorize --enableldap --enableldapauth --ldapserver={uri} --disableldaptls --ldapbasedn={base_dn} --enablemkhomedir --enablecachecreds --update'.format(uri=uri, base_dn=base_dn)
-    print 'Running %s' % cmd
+    print('Running', cmd)
     os.system(cmd)
+
+def check_oddjob():
+    pam_file = '/etc/pam.d/password-auth-ac'
+    for line in fileinput.input(pam_file,inplace=True):
+        if not 'pam_oddjob_mkhomedir' in line:
+            print(line,end='')
+        else:
+            print('session     optional      pam_mkhomedir.so umask=0077')
 
 
 def configure_sssd(bind_dn, bind_pw, backup_ldaps):
@@ -156,7 +167,7 @@ def fix_sudo():
         with open('/etc/sudoers.d/95-foxpass-sudo', 'w') as w:
             w.write('# Adding Foxpass group to sudoers\n%foxpass-sudo ALL=(ALL:ALL) NOPASSWD:ALL')
         os.system("chmod 440 /etc/sudoers.d/95-foxpass-sudo")
-        
+
 def restart():
     os.system("service sssd restart")
     os.system("service sshd restart")
